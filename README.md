@@ -52,7 +52,7 @@ conda create -n <new environment name> python=3.8
 conda activate <new environment name>
 pip install -r requirements.txt
 git clone <link to this repository>
-
+```
 
 ## Contributors
 - Iñigo Aduna Alonso (Researcher)
