@@ -1,37 +1,28 @@
-#imports
+# Standard Python imports
 import os
 import sys
-
-# Directorio que quieres añadir
-new_path = "C:\\Users\\aduna\\Documents\\Master_KU_Leuven\\Master_Thesis\\program\\data\\Github Matthias\\robot_demonstrator\\src"
-
-# Añadir el directorio al PYTHONPATH
-if new_path not in sys.path:
-    sys.path.append(new_path)
-import _thread
-import albumentations as A
-import cv2
+import time
 import json
 import math
+import pickle
+import warnings
+import _thread
+
+# Third-party library imports
+import albumentations as A
+from albumentations.pytorch import ToTensorV2
+import cv2
+import joblib
 import matplotlib.pyplot as plt
 import numpy as np
-import os
 import pandas as pd
-import pickle
-import time
 import torch
 import torch.multiprocessing as mp
 import torch.nn as nn
 import torch.optim as optim
 import torchvision
 import torchvision.transforms.functional as TF
-from albumentations.pytorch import ToTensorV2
 from PIL import Image
-from robot_demonstrator.ABB_IRB1200 import ABB_IRB1200
-from robot_demonstrator.Camera import *
-from robot_demonstrator.image_processing import *
-from robot_demonstrator.plot import *
-from robot_demonstrator.transformations import *
 from skimage import feature, measure, morphology
 from sklearn.metrics import mean_squared_error
 from sklearn.model_selection import train_test_split
@@ -41,8 +32,19 @@ from torch.utils.tensorboard import SummaryWriter
 from torchvision import models
 from torchvision.utils import save_image
 from tqdm import tqdm
-import joblib
-import warnings
+
+# Add the directory to PYTHONPATH
+new_path = "C:\\Users\\aduna\\Documents\\Master_KU_Leuven\\Master_Thesis\\program\\data\\Github Matthias\\robot_demonstrator\\src"
+if new_path not in sys.path:
+    sys.path.append(new_path)
+
+# Project-specific module imports
+from robot_demonstrator.ABB_IRB1200 import ABB_IRB1200
+from robot_demonstrator.Camera import *
+from robot_demonstrator.image_processing import *
+from robot_demonstrator.plot import *
+from robot_demonstrator.transformations import *
+
 
 
 # Suppress all warnings
@@ -159,247 +161,221 @@ def robot_task(name):
 		# Debug
 		print("\nRobot - Finished picking object!\n")
 
-def load_checkpoint(checkpoint, model):
-	"""
-	Loads the model state from a checkpoint file.
+class Utility:
+	@staticmethod
+	def load_checkpoint(checkpoint, model):
+		"""
+		Loads the model state from a checkpoint file.
 
-	Parameters:
+		Parameters:
 		checkpoint (dict): The checkpoint containing model state as saved previously.
 		model (torch.nn.Module): The model instance where the state will be loaded.
-	"""
-	print("=> Loading checkpoint")
-	model.load_state_dict(checkpoint["state_dict"])
-	
-# Postprocessing
+		"""
+		print("=> Loading checkpoint")
+		model.load_state_dict(checkpoint["state_dict"])
 
-def get_pieces_features(mask):
-	"""
-	Given a mask path, returns a dictionary with the features of each piece in 
-	the image including the radius of the circumcircle.
-	"""
-	# Read the image mask
-	mask = mask.numpy().squeeze()
-	mask = (mask*255).astype(np.uint8)
-	# Apply Gaussian blur to reduce noise while preserving edges
-	#blur = cv2.GaussianBlur(mask, (5, 5), 0)
-	
-	# Threshold the image to ensure only the pieces are in white
-	_, thresh = cv2.threshold(mask, 127, 255, cv2.THRESH_BINARY)
-	
-	# Find all contours on the thresholded image
-	contours, _ = cv2.findContours(thresh, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
-	# Filter out very small contours that are likely noise
-	contours = [cnt for cnt in contours if cv2.contourArea(cnt) > 100]
-	
-	# Initialize list to hold features of each piece
-	pieces_features = []
-	
-	# Process each contour to extract features
-	for piece_contour in contours:
-		# Create a mask of the piece
-		piece_mask = np.zeros_like(mask)
-		cv2.drawContours(piece_mask, [piece_contour], -1, (255), thickness=cv2.FILLED)
+	@staticmethod
+	def get_pieces_features(mask):
+		"""
+		Given a mask path, returns a dictionary with the features of each piece in 
+		the image including the radius of the circumcircle.
+		"""
+		# Read the image mask
+		mask = mask.numpy().squeeze()
+		mask = (mask*255).astype(np.uint8)
+		# Apply Gaussian blur to reduce noise while preserving edges
+		#blur = cv2.GaussianBlur(mask, (5, 5), 0)
 		
+		# Threshold the image to ensure only the pieces are in white
+		_, thresh = cv2.threshold(mask, 127, 255, cv2.THRESH_BINARY)
+		
+		# Find all contours on the thresholded image
+		contours, _ = cv2.findContours(thresh, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+		# Filter out very small contours that are likely noise
+		contours = [cnt for cnt in contours if cv2.contourArea(cnt) > 100]
+		
+		# Initialize list to hold features of each piece
+		pieces_features = []
+		
+		# Process each contour to extract features
+		for piece_contour in contours:
+			# Create a mask of the piece
+			piece_mask = np.zeros_like(mask)
+			cv2.drawContours(piece_mask, [piece_contour], -1, (255), thickness=cv2.FILLED)
+			
 
-		# Eccentricity (fitEllipse) if the contour has enough points
-		if piece_contour.shape[0] >= 5:
-			(x, y), (MA, ma), angle = cv2.fitEllipse(piece_contour)
-			eccentricity = np.sqrt(1 - (MA / ma) ** 2)
+			# Eccentricity (fitEllipse) if the contour has enough points
+			if piece_contour.shape[0] >= 5:
+				(x, y), (MA, ma), angle = cv2.fitEllipse(piece_contour)
+				eccentricity = np.sqrt(1 - (MA / ma) ** 2)
+			else:
+				eccentricity = None
+
+			# Centroid and orientation (moments)
+			M = cv2.moments(piece_contour)
+			cx = int(M['m10'] / M['m00'])
+			cy = int(M['m01'] / M['m00'])
+			centroid = (cx, cy)
+
+			# Circumcircle (minEnclosingCircle)
+			(x, y), radius = cv2.minEnclosingCircle(piece_contour)
+
+			# Compile features into a dictionary
+			features = {
+				#'aspect_ratio': aspect_ratio,
+				'eccentricity': eccentricity,
+				#'area': area,
+				#'perimeter': perimeter,
+				'centroid': centroid,
+				#'orientation': orientation,
+				#'convexity': convexity,
+				'radius': radius
+			}
+			# Add features of the current piece to the list
+			pieces_features.append(features)
+
+		return pieces_features
+
+	@staticmethod
+	def load_stats(filepath):
+		"""
+		Load the statistics from a JSON file.
+		"""
+		with open(filepath, 'r') as file:
+			stats = json.load(file)
+		return stats
+
+	@staticmethod
+	def filter_pieces(stats_data, pieces_list, std=9):
+		"""
+		Filter pieces based on the statistical data provided.
+		Args:
+		stats_data (dict): A dictionary with keys as properties and values as (mean, sigma).
+		pieces_list (list): A list of dictionaries, where each dictionary contains properties of a piece.
+		Returns:
+		list: A list of dictionaries, each containing 'centroid' and 'radius' of valid pieces.
+		"""
+		valid_pieces = []
+		stats_data= Utility.load_stats(stats_data)
+		# Iterate over each piece
+		for piece in pieces_list:
+			valid = True
+			# Check each statistical property
+			for key, (mean, sigma) in stats_data.items():
+				if key in piece:  # Only check if the key exists in the piece's data
+					value = piece[key]
+					if not (mean - std * sigma <= value <= mean + std * sigma):#+-7\sigma
+						#print(f"Not valid due to {key}")
+						valid = False
+						break
+			if valid:
+				# If all properties are valid, add the centroid and radius to the valid list
+				valid_pieces.append({'centroid': piece['centroid'], 'radius': piece['radius']})
+		return valid_pieces
+
+	@staticmethod
+	def postprocess(tensor_prediction, area_threshold):
+		# Convert tensor to numpy array
+		image = tensor_prediction.squeeze().cpu().numpy()
+		
+		# Ensure the image is in 8-bit format
+		if image.dtype != np.uint8:
+			image = np.clip(image * 255, 0, 255).astype(np.uint8)
+
+		# Handle color conversion if necessary
+		if len(image.shape) == 2:  # It's a grayscale image
+			image_color = cv2.cvtColor(image, cv2.COLOR_GRAY2BGR)
 		else:
-			eccentricity = None
+			image_color = image  # It's already a BGR image
 
-		# Centroid and orientation (moments)
-		M = cv2.moments(piece_contour)
-		cx = int(M['m10'] / M['m00'])
-		cy = int(M['m01'] / M['m00'])
-		centroid = (cx, cy)
+		# Define the kernel for morphological operations
+		kernel = np.ones((5, 5), np.uint8)
 
-		# Circumcircle (minEnclosingCircle)
-		(x, y), radius = cv2.minEnclosingCircle(piece_contour)
+		# Apply morphological opening and closing
+		opening = cv2.morphologyEx(image, cv2.MORPH_OPEN, kernel, iterations=2)
+		closing = cv2.morphologyEx(opening, cv2.MORPH_CLOSE, kernel)
 
-		# Compile features into a dictionary
-		features = {
-			#'aspect_ratio': aspect_ratio,
-			'eccentricity': eccentricity,
-			#'area': area,
-			#'perimeter': perimeter,
-			'centroid': centroid,
-			#'orientation': orientation,
-			#'convexity': convexity,
-			'radius': radius
-		}
-		# Add features of the current piece to the list
-		pieces_features.append(features)
+		# Convert to binary image for contour detection
+		_, binary = cv2.threshold(closing, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
+		
+		# Find contours
+		contours, _ = cv2.findContours(binary, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+		mask = np.zeros_like(image)
 
-	return pieces_features
+		# Filter and draw contours by area
+		for contour in contours:
+			if cv2.contourArea(contour) > area_threshold:
+				cv2.drawContours(mask, [contour], -1, (255), thickness=cv2.FILLED)
 
-def save_annotated_image(image, save_path, pieces_features):
+		# Further morphological cleaning
+		sure_bg = cv2.dilate(mask, kernel, iterations=3)
 
-	"""
-	Saves the image to the given path, annotated with the circumcircle and centroid mark for each piece in red for visibility.
-	Converts grayscale images to RGB before annotation.
-	Args:
-	- image (numpy array): The image array.
-	- save_path (str): Path to save the annotated image.
-	- pieces_features (list): List of dictionaries containing features of each piece including the radius and centroid.
-	"""
-	image = image.numpy().transpose(1, 2, 0)
-	image = (image * 255).astype(np.uint8)
-	# Convert grayscale image to RGB
-	if image.ndim == 2 or (image.ndim == 3 and image.shape[2] == 1):
-		image = cv2.cvtColor(image, cv2.COLOR_GRAY2RGB)
-	# Annotate each piece
-	for features in pieces_features:
-		# Draw the circumcircle in red
-		cv2.circle(image, (int(features['centroid'][0]), int(features['centroid'][1])), int(features['radius']), (0, 0, 255), 2)
-		# Draw the centroid as a red 'X'
-		cv2.drawMarker(image, (int(features['centroid'][0]), int(features['centroid'][1])), (0, 0, 255), markerType=cv2.MARKER_CROSS, markerSize=10, thickness=2)
-	# Save the annotated image
-	cv2.imwrite(save_path, image)
+		# Distance transformation for segmentation
+		dist_transform = cv2.distanceTransform(sure_bg, cv2.DIST_L2, 5)
+		_, sure_fg = cv2.threshold(dist_transform, 0.7 * dist_transform.max(), 255, 0)
+		sure_fg = np.uint8(sure_fg)
 
-def stats(data, savedir):
-	# Extraer todas las keys posibles (suponiendo que todas las features están en todos los diccionarios)
-	keys = list(data[0][0].keys())
-	keys.remove('centroid')
-	#keys.remove('aspect_ratio')
-	#keys.remove ('perimeter')
-	# Crear un diccionario para acumular los valores de cada feature
-	features = {key: [] for key in keys}
+		# Unknown region
+		unknown = cv2.subtract(sure_bg, sure_fg)
+
+		# Connected components to separate different objects
+		_, markers = cv2.connectedComponents(sure_fg)
+		markers = markers + 1
+		markers[unknown == 255] = 0
+
+		# Watershed algorithm to segment connected parts
+		cv2.watershed(image_color, markers)
+		image_color[markers == -1] = [255, 0, 0]  # Mark boundaries in red
+
+		# Prepare final mask in the same format as input
+		final_mask = np.zeros_like(image, dtype=np.uint8)
+		final_mask[markers > 1] = 1
+		
+		# Convert final mask back to tensor format
+		final_tensor = torch.from_numpy(final_mask).unsqueeze(0)  # Add batch dimension if necessary
+
+		return final_tensor
+
+
+
+	@staticmethod
+	def configuration_models(): 
+		# Define the number of input features
+		NINPUT = 3
+		# Define the number of output features
+		NOUTPUT = 3
+		# Define the number of neurons in the hidden layers
+		NHIDDEN = 25
+		# Set the activation function to Tanh
+		ACTIVATION = nn.Tanh()
+
+		# Model Initialization
+		CHECKPOINT_PATH_UNET= "./inigoaduna/my_checkpoint.pth.tar"  # Path to the model checkpoint
+		CHECKPOINT_PATH_MLP = "./inigoaduna/mlp_checkpoint.pth.tar"
+		SCALER_X = "./inigoaduna/scaler_X.pkl"
+		SCALER_Y = "./inigoaduna/scaler_y.pkl"
+		STATSDIR = "./inigoaduna/feature_stats.json"
+		DEVICE = "cuda" if torch.cuda.is_available() else "cpu"  # Set device to CUDA if available, otherwise use CPU.    
+		print(f'Device= {DEVICE}')
 	
-	# Recorrer cada lista de diccionarios y cada diccionario para acumular los valores de las features
-	for sublist in data:
-		for dic in sublist:
-			for key, value in dic.items():
-				# Omitir centroides porque son tuplas y no es trivial calcular media y desviación estándar de tuplas
-				#if key != 'centroid'and key!= 'area'and key!= 'perimeter':
-				if key != 'centroid' :
-					features[key].append(value)
-	
-	# Calcular la media y la desviación estándar para cada feature
-	stats_dict = {key: (np.mean(values), np.std(values)) for key, values in features.items()}
-	
-	# Crear el directorio si no existe
-	if not os.path.exists(savedir):
-		os.makedirs(savedir)
-	
-	# Guardar el diccionario en un archivo JSON
-	with open(os.path.join(savedir, 'feature_stats.json'), 'w') as f:
-		json.dump(stats_dict, f, indent=4)
-	
-	return stats_dict
+		model_mlp = nn.Sequential(
+			nn.Linear(NINPUT, NHIDDEN),
+			ACTIVATION,
+			nn.Linear(NHIDDEN, NHIDDEN),
+			ACTIVATION,
+			nn.Linear(NHIDDEN, NOUTPUT)
+		)
+		model_mlp.load_state_dict(torch.load(CHECKPOINT_PATH_MLP))
 
-def load_stats(filepath):
-	"""
-	Load the statistics from a JSON file.
-	"""
-	with open(filepath, 'r') as file:
-		stats = json.load(file)
-	return stats
 
-def filter_pieces(stats_data, pieces_list, std=9):
-	"""
-	Filter pieces based on the statistical data provided.
-	Args:
-	stats_data (dict): A dictionary with keys as properties and values as (mean, sigma).
-	pieces_list (list): A list of dictionaries, where each dictionary contains properties of a piece.
-	Returns:
-	list: A list of dictionaries, each containing 'centroid' and 'radius' of valid pieces.
-	"""
-	valid_pieces = []
-	stats_data= load_stats(stats_data)
-	# Iterate over each piece
-	for piece in pieces_list:
-		valid = True
-		# Check each statistical property
-		for key, (mean, sigma) in stats_data.items():
-			if key in piece:  # Only check if the key exists in the piece's data
-				value = piece[key]
-				if not (mean - std * sigma <= value <= mean + std * sigma):#+-7\sigma
-					#print(f"Not valid due to {key}")
-					valid = False
-					break
-		if valid:
-			# If all properties are valid, add the centroid and radius to the valid list
-			valid_pieces.append({'centroid': piece['centroid'], 'radius': piece['radius']})
-	return valid_pieces
-
-def postprocess(tensor_prediction, area_threshold):
-	# Convert tensor to numpy array
-	image = tensor_prediction.squeeze().cpu().numpy()
-	
-	# Ensure the image is in 8-bit format
-	if image.dtype != np.uint8:
-		image = np.clip(image * 255, 0, 255).astype(np.uint8)
-
-	# Handle color conversion if necessary
-	if len(image.shape) == 2:  # It's a grayscale image
-		image_color = cv2.cvtColor(image, cv2.COLOR_GRAY2BGR)
-	else:
-		image_color = image  # It's already a BGR image
-
-	# Define the kernel for morphological operations
-	kernel = np.ones((5, 5), np.uint8)
-
-	# Apply morphological opening and closing
-	opening = cv2.morphologyEx(image, cv2.MORPH_OPEN, kernel, iterations=2)
-	closing = cv2.morphologyEx(opening, cv2.MORPH_CLOSE, kernel)
-
-	# Convert to binary image for contour detection
-	_, binary = cv2.threshold(closing, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
-	
-	# Find contours
-	contours, _ = cv2.findContours(binary, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
-	mask = np.zeros_like(image)
-
-	# Filter and draw contours by area
-	for contour in contours:
-		if cv2.contourArea(contour) > area_threshold:
-			cv2.drawContours(mask, [contour], -1, (255), thickness=cv2.FILLED)
-
-	# Further morphological cleaning
-	sure_bg = cv2.dilate(mask, kernel, iterations=3)
-
-	# Distance transformation for segmentation
-	dist_transform = cv2.distanceTransform(sure_bg, cv2.DIST_L2, 5)
-	_, sure_fg = cv2.threshold(dist_transform, 0.7 * dist_transform.max(), 255, 0)
-	sure_fg = np.uint8(sure_fg)
-
-	# Unknown region
-	unknown = cv2.subtract(sure_bg, sure_fg)
-
-	# Connected components to separate different objects
-	_, markers = cv2.connectedComponents(sure_fg)
-	markers = markers + 1
-	markers[unknown == 255] = 0
-
-	# Watershed algorithm to segment connected parts
-	cv2.watershed(image_color, markers)
-	image_color[markers == -1] = [255, 0, 0]  # Mark boundaries in red
-
-	# Prepare final mask in the same format as input
-	final_mask = np.zeros_like(image, dtype=np.uint8)
-	final_mask[markers > 1] = 1
-	
-	# Convert final mask back to tensor format
-	final_tensor = torch.from_numpy(final_mask).unsqueeze(0)  # Add batch dimension if necessary
-
-	return final_tensor
-
-def read_labels(labels_path):
-	with open(labels_path, 'r') as file:
-		line = file.readline().strip()
-		values = np.array(list(map(int, line.split())))
-	return values
-
-def calculate_corrections(differences):
-	total_diff_x = sum(diff[0] for diff in differences)
-	total_diff_y = sum(diff[1] for diff in differences)
-	count = len(differences)
-	
-	C_x = total_diff_x / count
-	C_y = total_diff_y / count
-	
-	return C_x, C_y
+		# Model initialization with specified input and output channels
+		model_unet = UNET(in_channels=3, out_channels=1).to(DEVICE)
+		Utility.load_checkpoint(torch.load(CHECKPOINT_PATH_UNET ), model_unet)
+		model_unet.eval()  # Set the model to evaluation mode.       
+		# Define a function for the thread
+		scaler_X_loaded = joblib.load(SCALER_X)
+		scaler_y_loaded = joblib.load(SCALER_Y)
+		return scaler_X_loaded, scaler_y_loaded, model_unet, model_mlp, DEVICE,STATSDIR
 
 class DoubleConv(nn.Module):
 	"""
@@ -501,45 +477,7 @@ class UNET(nn.Module):
 
 		return self.final_conv(x)
 	
-def configuration_models(): 
-	 # Define the number of input features
-	NINPUT = 3
-	# Define the number of output features
-	NOUTPUT = 3
-	# Define the number of neurons in the hidden layers
-	NHIDDEN = 25
-	# Set the activation function to Tanh
-	ACTIVATION = nn.Tanh()
 
-	# Model Initialization
-	CHECKPOINT_PATH_UNET= "./inigoaduna/my_checkpoint.pth.tar"  # Path to the model checkpoint
-	CHECKPOINT_PATH_MLP = "./inigoaduna/mlp_checkpoint.pth.tar"
-	SCALER_X = "./inigoaduna/scaler_X.pkl"
-	SCALER_Y = "./inigoaduna/scaler_y.pkl"
-	STATSDIR = "./inigoaduna/feature_stats.json"
-	DEVICE = "cuda" if torch.cuda.is_available() else "cpu"  # Set device to CUDA if available, otherwise use CPU.    
-	print(f'Device= {DEVICE}')
- 
-	model_mlp = nn.Sequential(
-		nn.Linear(NINPUT, NHIDDEN),
-		ACTIVATION,
-		nn.Linear(NHIDDEN, NHIDDEN),
-		ACTIVATION,
-		nn.Linear(NHIDDEN, NOUTPUT)
-	)
-	model_mlp.load_state_dict(torch.load(CHECKPOINT_PATH_MLP))
-
-
-	# Model initialization with specified input and output channels
-	model_unet = UNET(in_channels=3, out_channels=1).to(DEVICE)
-	load_checkpoint(torch.load(CHECKPOINT_PATH_UNET ), model_unet)
-	model_unet.eval()  # Set the model to evaluation mode.       
-	# Define a function for the thread
-	scaler_X_loaded = joblib.load(SCALER_X)
-	scaler_y_loaded = joblib.load(SCALER_Y)
-	return scaler_X_loaded, scaler_y_loaded, model_unet, model_mlp, DEVICE,STATSDIR
-
- 
 def camera_task(name):
 
 	IMAGE_HEIGHT = 270  
@@ -560,7 +498,7 @@ def camera_task(name):
 	],
 	)
 
-	scaler_x, scaler_y, model_unet, model_mlp, DEVICE, STATSDIR = configuration_models()
+	scaler_x, scaler_y, model_unet, model_mlp, DEVICE, STATSDIR = Utility.configuration_models()
 	
 	# Global
 	global xyz_base
@@ -596,12 +534,12 @@ def camera_task(name):
 		tensor_prediction = torch.from_numpy(resized_prediction).unsqueeze(0)
 	
 		#Postprocessing
-		tensor_prediction = postprocess(tensor_prediction, AREA_TRESHOLD)    
+		tensor_prediction = Utility.postprocess(tensor_prediction, AREA_TRESHOLD)    
     
     	#Get Pieces features
-		pieces_features = get_pieces_features(tensor_prediction)
+		pieces_features = Utility.get_pieces_features(tensor_prediction)
 		#Filter objects not similar to images
-		pieces_features = filter_pieces(STATSDIR , pieces_features, SIGMA)
+		pieces_features = Utility.filter_pieces(STATSDIR , pieces_features, SIGMA)
 		robot_locations = []
 		if len(pieces_features)!=0:
 			for piece in pieces_features: 
