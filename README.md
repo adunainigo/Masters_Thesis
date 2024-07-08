@@ -39,9 +39,8 @@ The project is developed following the CRISP-DM (Cross Industry Standard Process
 | File Name | Content |
 |-----------|---------|
 | main_threaded.py | For the deployment of the model, substitute this file in the "Robot Demonstrator/scripts/main_threaded.py" - Matthias de Ryck GitHub repository.|
-| Deployment_video | A video of the system in operation.|
+| Deployment_video | A video of the system in operation. [See Demonstration Video](results/Deployment_video.mp4)|
 
-[See Demonstration Video](results/Deployment_video.mp4)
 
 ## Future Work
 Future research will focus on improving depth perception in images, refining machine learning models, and expanding the dataset to enhance the generalization of AI models in diverse industrial settings.
