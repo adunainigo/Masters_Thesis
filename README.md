@@ -46,6 +46,7 @@ The project is developed following the CRISP-DM (Cross Industry Standard Process
 Future research will focus on improving depth perception in images, refining machine learning models, and expanding the dataset to enhance the generalization of AI models in diverse industrial settings.
 
 ## Installation
+```bash
 cd <Path to the folder you’d like to save this project>
 conda create -n <new environment name> python=3.8
 conda activate <new environment name>
