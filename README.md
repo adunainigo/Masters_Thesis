@@ -16,7 +16,7 @@ The project is developed following the CRISP-DM (Cross Industry Standard Process
 
 | File Name | Content |
 |-----------|---------|
-| DataUnderstanding&Preparation.ipynb | # AI Reliability |
+| DataUnderstanding&Preparation.ipynb | Data Visualization, Feature obtaining, binary mask verification, dataset splitting, dataset augmentation |
 
 3.- **Modelling**: Two segmentation models are trained using U-Net [U-Net Model](https://github.com/zhixuhao/unet.git) and Mask R-CNN architectures. A Region of Interest (ROI) filtering block with HSV filtering and contour analysis is applied, followed by a final filtering block comparing features to those in a healthy (non-corrupted) dataset. The (x,y,z) positions of pieces in the working range are transformed to the robot frame using either transformation matrices from the calibration process or an end-to-end MLP model.
 
