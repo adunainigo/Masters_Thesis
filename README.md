@@ -9,6 +9,7 @@ The primary objective of this study is to assess and improve the reliability of 
 
 ## Methodology
 The project is developed following the CRISP-DM (Cross Industry Standard Process for Data Mining) methodology:
+
 1.- **Data Understanding**: Raw images are captured using the Intel RealSense D415 and processed to correct distortions. An HSV filter is applied to generate object masks. The data consists of images, masks (binary maps indicating the location and shape of specific objects for the robot to pick), and ground truth labels (providing the location of the masks in the robot frame).
 
 2.- **Data Preparation**: Specific features of the images and masks are identified. Masks undergo binarization checks, and the dataset is split and augmented with spatial and image-specific transformations (e.g., horizontal and vertical flips, brightness contrast adjustments, Gaussian noise, coarse dropout, blurring) to enhance model performance and prevent overfitting. Additional corruptions (shot noise, impulse noise, defocus blur, glass blur, motion blur, fog, brightness, contrast adjustments) are applied for robustness.
