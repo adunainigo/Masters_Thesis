@@ -39,7 +39,7 @@ The project is developed following the CRISP-DM (Cross Industry Standard Process
 | File Name | Content |
 |-----------|---------|
 | main_threaded.py | For the deployment of the model, substitute this file in the "Robot Demonstrator/scripts/main_threaded.py" - Matthias de Ryck GitHub repository.|
-
+| Deployment_video | A video of the system in operation.|
 
 
 ## Future Work
