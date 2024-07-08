@@ -10,16 +10,16 @@ The primary objective of this study is to assess and improve the reliability of 
 ## Methodology
 The project is developed following the CRISP-DM (Cross Industry Standard Process for Data Mining) methodology:
 
-0.- **Business Understanding**: A general overview of the importance of the topic and approaches which have been developed is available in the milestones folder. 
+0.- **Business Understanding**: A general overview of the importance of the topic and approaches developed is available in the milestones folder.
 
 | File Name | Content |
 |-----------|---------|
-| Summary Milestones.docx | Writen overview of the project and results in each intermediate step |
-| Intermediate_presentation.pptx | General Overview of the project. |
+| Summary Milestones.docx | Written overview of the project and results in each intermediate step. |
+| Intermediate_presentation.pptx | General overview of the project. |
 
 1.- **Data Understanding**: Raw images are captured using the Intel RealSense D415 and processed to correct distortions. An HSV filter is applied to generate object masks. The data consists of images, masks (binary maps indicating the location and shape of specific objects for the robot to pick), and ground truth labels (providing the location of the masks in the robot frame).
 
-2.- **Data Preparation**: Specific features of the images and masks are identified. Masks undergo binarization checks, and the dataset is split and augmented with spatial and image-specific transformations (e.g., horizontal and vertical flips, brightness contrast adjustments, Gaussian noise, coarse dropout, blurring) to enhance model performance and prevent overfitting. Additional corruptions (shot noise, impulse noise, defocus blur, glass blur, motion blur, fog, brightness, contrast adjustments) are applied for robustness.
+2.- **Data Preparation**: Specific features of the images and masks are identified. Masks undergo binarization checks, and the dataset is split and augmented with spatial and image-specific transformations (e.g., horizontal and vertical flips, brightness contrast adjustments, Gaussian blur).
 
 | File Name | Content |
 |-----------|---------|
@@ -31,14 +31,14 @@ The project is developed following the CRISP-DM (Cross Industry Standard Process
 
 | File Name | Content |
 |-----------|---------|
-| Modelling&Evaluation.ipynb | Model building blocks definition (U-Net, Postprocessing, Filtering, MLP, Trasformation Matrix block), Training and evaluation of each building block.  |
-| results/* | This folder contains images with the results of the model which will be commented in the master´s thesis in detail.|
+| Modelling&Evaluation.ipynb | Model building blocks definition (U-Net, Postprocessing, Filtering, MLP, Transformation Matrix block), training, and evaluation of each building block.  |
+| results/* | This folder contains images with the results of the model which will be commented in the master’s thesis in detail.|
 
 5.- **Deployment**: The end-to-end model is tested on the ABB IRB 1200 robot using the [Robot Demonstrator - Matthias de Ryck](https://github.com/MatthiasDR96/robot_demonstrator.git) as a baseline. 
 
 | File Name | Content |
 |-----------|---------|
-| main_threaded.py | For the deployment of the model, substitute this file in the "Robot Demonstrator/scripts/main_threaded.py" - Matthias de Ryck github repository|
+| main_threaded.py | For the deployment of the model, substitute this file in the "Robot Demonstrator/scripts/main_threaded.py" - Matthias de Ryck GitHub repository.|
 
 
 
