@@ -32,7 +32,7 @@ The project is developed following the CRISP-DM (Cross Industry Standard Process
 | File Name | Content |
 |-----------|---------|
 | Modelling&Evaluation.ipynb | Model building blocks definition (U-Net, Postprocessing, Filtering, MLP, Transformation Matrix block), training, and evaluation of each building block.  |
-| results/* | This folder contains images with the results of the model which will be commented in the master’s thesis in detail.|
+| results/ | |
 
 5.- **Deployment**: The end-to-end model is tested on the ABB IRB 1200 robot using the [Robot Demonstrator - Matthias de Ryck](https://github.com/MatthiasDR96/robot_demonstrator.git) as a baseline. 
 
