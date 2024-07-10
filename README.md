@@ -32,7 +32,12 @@ The project is developed following the CRISP-DM (Cross Industry Standard Process
 | File Name | Content |
 |-----------|---------|
 | Modelling&Evaluation.ipynb | Model building blocks definition (U-Net, Postprocessing, Filtering, MLP, Transformation Matrix block), training, and evaluation of each building block.  |
-| results/ | |
+| corruption_application/* | This folder demonstrates the effects of applying various severities of ImageNet-C corruptions on the image of a piece within the robot's workspace. |
+| postprocessing_area_treshold/* | This folder shows a sweep performed for the Postprocessing&Filtering block with different pixel counts (Area threshold). |
+| before_and_after_postprocessing_spyderplot/* | This folder illustrates how the evaluation metric (Dice score) varies depending on the type and severity of corruption applied, with or without the postprocessing and filtering block. |
+| boxplot_histogram_model_mlp/* | This folder contains two types of graphs: histograms showing the percentage of pieces detected by the robot based on the allowable permissiveness (sigma), and a boxplot of the error in calculating the piece's position depending on permissiveness, corruption, and severity, using an MLP as the final block. |
+| boxplot_histogram_model_transfmatrix/* | This folder shows the same as the previous row but using transformation and correction matrices as the final block. |
+
 
 5.- **Deployment**: The end-to-end model is tested on the ABB IRB 1200 robot using the [Robot Demonstrator - Matthias de Ryck](https://github.com/MatthiasDR96/robot_demonstrator.git) as a baseline. 
 
