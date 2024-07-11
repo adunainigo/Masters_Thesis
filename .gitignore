@@ -1,6 +1,6 @@
-./models/mlp_checkpoint.pth.tar
-./models/unet_checkpoint.pth.tar
-./models
-models/mlp_checkpoint.pth.tar
-models/unet_checkpoint.pth.tar
-models
+#./models/mlp_checkpoint.pth.tar
+#./models/unet_checkpoint.pth.tar
+#./models
+#models/mlp_checkpoint.pth.tar
+#models/unet_checkpoint.pth.tar
+#models
