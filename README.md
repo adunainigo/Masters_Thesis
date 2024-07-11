@@ -27,7 +27,7 @@ The project is developed following the CRISP-DM (Cross Industry Standard Process
 | ./data/imgs_warped/* | Contains RGB images as seen from above, in the Warped Camera Frame (WCF). |
 | ./data/labels_gt_RF/* | Contains ground truth (x, y, z) positions of the pieces within the robot's working frame, as observed from the Robot Frame. |
 | ./data/masks_warped/* | Contains masks of the pieces as seen from above, in the Warped Camera Frame (WCF). |
-
+| ./data/calibration_images/* | Contains files with perspective transformation matrixes obtained during the callibration of the camera, feature stats obtained from the healthy dataset which is used in the filtering block, and the data scalers for the data normalization and scaling used in the Multilayer Perceptron . |
 
 2.- **Data Preparation**: Specific features of the images and masks are identified. Masks undergo binarization checks, and the dataset is split and augmented with spatial and image-specific transformations (e.g., horizontal and vertical flips, brightness contrast adjustments, Gaussian blur).
 
