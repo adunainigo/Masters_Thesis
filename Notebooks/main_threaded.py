@@ -371,11 +371,11 @@ class Utility:
 		ACTIVATION = nn.Tanh()
 
 		# Model Initializations
-		CHECKPOINT_PATH_UNET= "./inigoaduna/my_checkpoint.pth.tar"  # Path to the model checkpoint
-		CHECKPOINT_PATH_MLP = "./inigoaduna/mlp_checkpoint.pth.tar"
-		SCALER_X = "./inigoaduna/scaler_X.pkl"
-		SCALER_Y = "./inigoaduna/scaler_y.pkl"
-		STATSDIR = "./inigoaduna/feature_stats.json"
+		CHECKPOINT_PATH_UNET= "../models/unet_checkpoint.pth.tar"  # You can find them in https://github.com/adunainigo/Masters_Thesis.git/data
+		CHECKPOINT_PATH_MLP = "../models/mlp_checkpoint.pth.tar"
+		SCALER_X = "../data/calibration_matrixes/scaler_X.pkl"
+		SCALER_Y = "../data/calibration_matrixes/scaler_Y.pkl"
+		STATSDIR =  "../data/calibration_matrixes//feature_stats.json"
 		DEVICE = "cuda" if torch.cuda.is_available() else "cpu"  # Set device to CUDA if available, otherwise use CPU.    
 		print(f'Device= {DEVICE}')
 	
