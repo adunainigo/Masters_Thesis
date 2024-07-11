@@ -104,14 +104,18 @@ xyz_base = []
 
 # Robot task thread function
 def robot_task(name):
-
+	"""
+    Function to handle the robot task in a separate thread.
+    Picks and places objects within the defined robot boundaries.
+    """
+    
 	# Define global variable
 	global xyz_base
 
 	# Loop
 	while True:
 
-		# Sleep
+		# Sleep for a while
 		time.sleep(1)
 
 		# Get feasible positions
@@ -123,7 +127,7 @@ def robot_task(name):
 		# Get first element
 		xyz_base_tmp = xyz_base_feasible[0]
 
-		# Debug
+		# Debug message
 		print("\nRobot - Start picking object!\n")
 
 		# Set pick pose upper
@@ -134,7 +138,7 @@ def robot_task(name):
 		robot.con.set_cartesian([xyz_base_tmp, quat])
 		time.sleep(1)
 
-		# Set pick DIO
+		# Activate end effector
 		robot.con.set_dio(1)
 		time.sleep(1)
 
@@ -142,26 +146,30 @@ def robot_task(name):
 		robot.con.set_cartesian([xyz_base_tmp + offset1, quat])
 		time.sleep(1)
 
-		# Set place pose upper
+		# Move to place pose upper
 		robot.con.set_cartesian([pose_place + offset1, quat])
 		time.sleep(1)
 
-		# Set place pose
+		# Move to place pose
 		robot.con.set_cartesian([pose_place, quat])
 		time.sleep(1)
 
-		# Set place DIO
+		# Deactivate end effector
 		robot.con.set_dio(0)
 		time.sleep(1)
 
-		# Set home position
+		# Move to home position
 		robot.con.set_joints([0, 0, 0, 0, 0, 0])
 		time.sleep(1)
 
-		# Debug
+		# Move to home position
 		print("\nRobot - Finished picking object!\n")
 
 class Utility:
+	"""
+	Class to tackle all utility functions that will be used during this program. 
+	"""
+    
 	@staticmethod
 	def load_checkpoint(checkpoint, model):
 		"""
@@ -183,14 +191,14 @@ class Utility:
 		# Read the image mask
 		mask = mask.numpy().squeeze()
 		mask = (mask*255).astype(np.uint8)
-		# Apply Gaussian blur to reduce noise while preserving edges
-		#blur = cv2.GaussianBlur(mask, (5, 5), 0)
-		
+  
+
 		# Threshold the image to ensure only the pieces are in white
 		_, thresh = cv2.threshold(mask, 127, 255, cv2.THRESH_BINARY)
 		
 		# Find all contours on the thresholded image
 		contours, _ = cv2.findContours(thresh, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+  
 		# Filter out very small contours that are likely noise
 		contours = [cnt for cnt in contours if cv2.contourArea(cnt) > 100]
 		
@@ -222,13 +230,8 @@ class Utility:
 
 			# Compile features into a dictionary
 			features = {
-				#'aspect_ratio': aspect_ratio,
 				'eccentricity': eccentricity,
-				#'area': area,
-				#'perimeter': perimeter,
 				'centroid': centroid,
-				#'orientation': orientation,
-				#'convexity': convexity,
 				'radius': radius
 			}
 			# Add features of the current piece to the list
@@ -275,6 +278,17 @@ class Utility:
 
 	@staticmethod
 	def postprocess(tensor_prediction, area_threshold):
+		"""
+        Postprocesses the predicted tensor to clean up the segmentation mask.
+        
+        Parameters:
+        tensor_prediction (torch.Tensor): The predicted tensor from the model.
+        area_threshold (int): The minimum area for a detected object to be considered valid.
+        
+        Returns:
+        torch.Tensor: The postprocessed tensor.
+        """
+        
 		# Convert tensor to numpy array
 		image = tensor_prediction.squeeze().cpu().numpy()
 		
@@ -340,6 +354,13 @@ class Utility:
 
 	@staticmethod
 	def configuration_models(): 
+		"""
+			Configure and load the necessary models and scalers for the application.
+				
+			Returns:
+			tuple: Loaded scalers, models, and device information.
+		"""
+        
 		# Define the number of input features
 		NINPUT = 3
 		# Define the number of output features
@@ -349,7 +370,7 @@ class Utility:
 		# Set the activation function to Tanh
 		ACTIVATION = nn.Tanh()
 
-		# Model Initialization
+		# Model Initializations
 		CHECKPOINT_PATH_UNET= "./inigoaduna/my_checkpoint.pth.tar"  # Path to the model checkpoint
 		CHECKPOINT_PATH_MLP = "./inigoaduna/mlp_checkpoint.pth.tar"
 		SCALER_X = "./inigoaduna/scaler_X.pkl"
@@ -358,6 +379,7 @@ class Utility:
 		DEVICE = "cuda" if torch.cuda.is_available() else "cpu"  # Set device to CUDA if available, otherwise use CPU.    
 		print(f'Device= {DEVICE}')
 	
+ 		# Load MLP model
 		model_mlp = nn.Sequential(
 			nn.Linear(NINPUT, NHIDDEN),
 			ACTIVATION,
@@ -368,11 +390,12 @@ class Utility:
 		model_mlp.load_state_dict(torch.load(CHECKPOINT_PATH_MLP))
 
 
-		# Model initialization with specified input and output channels
+		## Load U-Net model
 		model_unet = UNET(in_channels=3, out_channels=1).to(DEVICE)
 		Utility.load_checkpoint(torch.load(CHECKPOINT_PATH_UNET ), model_unet)
-		model_unet.eval()  # Set the model to evaluation mode.       
-		# Define a function for the thread
+		model_unet.eval()  # Set the model to evaluation mode.  
+       
+		# Load scalers
 		scaler_X_loaded = joblib.load(SCALER_X)
 		scaler_y_loaded = joblib.load(SCALER_Y)
 		return scaler_X_loaded, scaler_y_loaded, model_unet, model_mlp, DEVICE,STATSDIR
@@ -479,12 +502,18 @@ class UNET(nn.Module):
 	
 
 def camera_task(name):
-
+	"""
+		Function to handle the camera task in a separate thread.
+		Captures images, processes them, and identifies object positions for the robot.
+	"""
+    
 	IMAGE_HEIGHT = 270  
 	IMAGE_WIDTH  = 480
 	AREA_TRESHOLD = 9000
 	NON_DETECTED_PIECES=0
 	SIGMA = 3
+ 
+	# Define transformations for image preprocessing and resizing
 	post_predict_resize = A.Resize(height=1080, width=1920, interpolation=1)  
 	test_transforms = A.Compose(
 	[
@@ -498,24 +527,22 @@ def camera_task(name):
 	],
 	)
 
+	# Load models and scalers
 	scaler_x, scaler_y, model_unet, model_mlp, DEVICE, STATSDIR = Utility.configuration_models()
 	
-	# Global
+	# Global variable
 	global xyz_base
 
-	# Loop
+	# Loop indefinitely
 	while True:
 
-		# Read frame
+		# Read frame from the camera
 		image, depth_image = cam.read()
   
-		#image = cv2.imread(image)
-		#depth = np.load(depth_image)
-
 		# Undistort image
 		h, w = image.shape[:2]
 		newcameramtx, roi = cv2.getOptimalNewCameraMatrix(cam.mtx, cam.dist, (w,h), 1, (w,h))
-		mapx, mapy = cv2.initUndistortRectifyMap(cam.mtx, cam.dist, None, newcameramtx, (w, h), 5)
+		#mapx, mapy = cv2.initUndistortRectifyMap(cam.mtx, cam.dist, None, newcameramtx, (w, h), 5)
 		#image = cv2.remap(image, mapx, mapy, cv2.INTER_LINEAR)
 
 		# Warp image as if the camera took the image from above, perpendicular to the table
@@ -523,6 +550,8 @@ def camera_task(name):
 		image= Image.fromarray(cv2.cvtColor(warped_image, cv2.COLOR_BGR2RGB))
 		transformed = test_transforms(image=np.array(image))
 		image = transformed["image"].unsqueeze(0).to(DEVICE)
+  
+		# Perform prediction with the U-Net model
 		with torch.no_grad():
 			prediction = model_unet(image)
 		prediction = torch.sigmoid(prediction)
@@ -533,19 +562,23 @@ def camera_task(name):
 		resized_prediction = post_predict_resize(image=prediction)['image']
 		tensor_prediction = torch.from_numpy(resized_prediction).unsqueeze(0)
 	
-		#Postprocessing
+		# Postprocess the prediction --> POSTPROCESSING BLOCK
 		tensor_prediction = Utility.postprocess(tensor_prediction, AREA_TRESHOLD)    
     
-    	#Get Pieces features
+    	# Get features of detected pieces
 		pieces_features = Utility.get_pieces_features(tensor_prediction)
-		#Filter objects not similar to images
+  
+		# Filter pieces based on statistical data
 		pieces_features = Utility.filter_pieces(STATSDIR , pieces_features, SIGMA)
+  
+
 		robot_locations = []
 		if len(pieces_features)!=0:
 			for piece in pieces_features: 
             	#Get Data
 				center = piece['centroid']
 				radius = piece['radius']
+    
             	# Transform pixel on warped image back to original image
 				new_pixel = np.dot(np.linalg.inv(M), np.array([[center[0]], [center[1]], [1]]))
 				center = [int(new_pixel[0][0]/new_pixel[2][0]), int(new_pixel[1][0]/new_pixel[2][0])]
@@ -553,25 +586,28 @@ def camera_task(name):
             	## Get pixel depth 
 				pixel_depth = depth_image[center[1], center[0]]
             
+				# Calculate world coordinates
 				x_wc = center[0]
 				y_wc = center[1]
 				z_wc = pixel_depth 
-            	# Prepare the model for mlp
+    
+            	# Prepare the model input for MLP
 				input_mlp_raw = np.array([[x_wc, y_wc, z_wc]])  # Convert it to numpy and add a dimension
 				input_mlp_scaled = scaler_x.transform(input_mlp_raw)  # Apply The scaling
 				input_mlp = torch.tensor(input_mlp_scaled, dtype=torch.float32)  # Convert to tensor
+    
+				# Perform prediction with MLP model
 				with torch.no_grad():
 					output_mlp = model_mlp(input_mlp)
 				x_pred, y_pred, z_pred = scaler_y.inverse_transform(output_mlp.numpy().reshape(1, -1)).squeeze()
 
+				# Save robot locations
 				xyz= np.array ([x_pred, y_pred, 177])
 				robot_locations.append(list(xyz))
 				xyz_base = robot_locations
 				print(f'Robot Frame: ({x_pred},{y_pred},{z_pred})')
     
-				### The code below is to show the results on the screen
-
-
+				# Display results on the screen
 				# Display the raw image with bounding box
 				final_image = cv2.resize(warped_image, (int(1920/2), int(1080/2)))  
 				cv2.imshow('frame1', final_image)
@@ -582,7 +618,7 @@ def camera_task(name):
 
 
 				# Display the mask
-				final_image = cv2.resize(resized_prediction, (int(1920/2), int(1080/2)))  
+				final_image = cv2.resize(tensor_prediction, (int(1920/2), int(1080/2)))  
 				cv2.imshow('frame3', final_image)
 				cv2.resizeWindow("frame3", (int(1920/2), int(1080/2)))  
 				cv2.moveWindow("frame3", int(1920/2), 0)
@@ -599,13 +635,13 @@ def camera_task(name):
 				
 if __name__ == "__main__":
 
-	# Create two threads
+	# Create two threads for the camera and robot tasks
 	try:
 		_thread.start_new_thread(camera_task, ("Thread-1", ) )
 		_thread.start_new_thread(robot_task, ("Thread-2", ) )
 	except:
 		print ("Error: unable to start thread")
 
-	# Loop threads
+	# Keep the main thread running
 	while True:
 		pass
