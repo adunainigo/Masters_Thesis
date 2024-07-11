@@ -19,6 +19,16 @@ The project is developed following the CRISP-DM (Cross Industry Standard Process
 
 1.- **Data Understanding**: Raw images are captured using the Intel RealSense D415 and processed to correct distortions. An HSV filter is applied to generate object masks. The data consists of images, masks (binary maps indicating the location and shape of specific objects for the robot to pick), and ground truth labels (providing the location of the masks in the robot frame).
 
+| File Name | Description |
+|-----------|-------------|
+| DataUnderstanding&Preparation.ipynb | Includes data visualization, feature extraction, binary mask verification, dataset splitting, and data augmentation. |
+| ./data/images_rgb/* | Contains RGB images captured by the Intel RealSense D415 camera (Camera Frame). |
+| ./data/imgs_depth/* | Contains depth images captured by the Intel RealSense D415 camera (Camera Frame). |
+| ./data/imgs_warped/* | Contains RGB images as seen from above, in the Warped Camera Frame (WCF). |
+| ./data/labels_gt_RF/* | Contains ground truth (x, y, z) positions of the pieces within the robot's working frame, as observed from the Robot Frame. |
+| ./data/masks_warped/* | Contains masks of the pieces as seen from above, in the Warped Camera Frame (WCF). |
+
+
 2.- **Data Preparation**: Specific features of the images and masks are identified. Masks undergo binarization checks, and the dataset is split and augmented with spatial and image-specific transformations (e.g., horizontal and vertical flips, brightness contrast adjustments, Gaussian blur).
 
 | File Name | Content |
