@@ -40,6 +40,8 @@ The project is developed following the CRISP-DM (Cross Industry Standard Process
 
 4.- **Evaluation**: Performance is assessed by corrupting images with various corruptions using [Imagenet-C](https://github.com/hendrycks/robustness.git) as a benchmark. Some functions have been modified since in this repository the filters are fixed to an image size of 64x64 px. The metrics used for evaluation are dice score and accuracy. 
 
+![U-Net Architecture](github_imgs/U_net_architecture.png)
+
 | File Name | Content |
 |-----------|---------|
 | Modelling&Evaluation.ipynb | Model building blocks definition (U-Net, Postprocessing, Filtering, MLP, Transformation Matrix block), training, and evaluation of each building block.  |
