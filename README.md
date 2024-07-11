@@ -38,9 +38,10 @@ The project is developed following the CRISP-DM (Cross Industry Standard Process
 
 3.- **Modelling**: Two segmentation models are trained using U-Net [U-Net Model](https://github.com/zhixuhao/unet.git) and Mask R-CNN architectures. A Region of Interest (ROI) filtering block with HSV filtering and contour analysis is applied, followed by a final filtering block comparing features to those in a healthy (non-corrupted) dataset. The (x,y,z) positions of pieces in the working range are transformed to the robot frame using either transformation matrices from the calibration process or an end-to-end MLP model.
 
+![U-Net Architecture](github_imgs/U_net_architecture.png)
+
 4.- **Evaluation**: Performance is assessed by corrupting images with various corruptions using [Imagenet-C](https://github.com/hendrycks/robustness.git) as a benchmark. Some functions have been modified since in this repository the filters are fixed to an image size of 64x64 px. The metrics used for evaluation are dice score and accuracy. 
 
-![U-Net Architecture](github_imgs/U_net_architecture.png)
 
 | File Name | Content |
 |-----------|---------|
